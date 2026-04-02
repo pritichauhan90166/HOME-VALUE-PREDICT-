@@ -145,8 +145,8 @@ if page == "🏡 Prediction":
         input_scaled = scaler.transform(input_data)
         
         prediction = model.predict(input_scaled)  # shape: (1, n_targets)
-        prediction_value = prediction[0]          # get the first (and only) value
-
+        price_pred = prediction[0][0]
+        st.success(f"💰 Predicted Price: ${price_pred:,.2f}")
         st.success(f"💰 Predicted Price: ${prediction_value:,.2f}")
 
         # Save in session state
@@ -170,30 +170,35 @@ elif page == "📊 Visualization":
     st.pyplot(fig)
 
 # =========================
-# SHAP Explainability
+# Explainability (Feature Importance)
 # =========================
 elif page == "🔍 Explainability (SHAP)":
-    st.header("Feature Importance via SHAP")
-    
+    st.header("Feature Importance")
+
     features = ['bedrooms','bathrooms','sqft_living','sqft_lot','floors']
-    X_for_shap = df[features].fillna(0).values
 
-    targets = ['price','sqft_living','bedrooms','bathrooms']
-
-    # Safety check (IMPORTANT)
-    if not hasattr(model, "estimators_"):
-        st.error("Model is not multi-output. Retrain model.")
+    # Handle multi-output model safely
+    if hasattr(model, "estimators_"):
+        rf_model = model.estimators_[0]  # first target (price)
     else:
-        for i, single_model in enumerate(model.estimators_):
-            target = targets[i] if i < len(targets) else f"Target {i}"
+        rf_model = model
 
-            st.subheader(f"Feature Importance for {target}")
+    importances = rf_model.feature_importances_
 
-            explainer = shap.Explainer(single_model, X_for_shap)
-            shap_values = explainer(X_for_shap[:100], check_additivity=False)
+    importance_df = pd.DataFrame({
+        "Feature": features,
+        "Importance": importances
+    }).sort_values(by="Importance", ascending=False)
 
-            shap.plots.bar(shap_values, show=False)
-            st.pyplot(plt.gcf())
+    fig = px.bar(
+        importance_df,
+        x="Importance",
+        y="Feature",
+        orientation="h",
+        title="Feature Importance"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
             
 # =========================

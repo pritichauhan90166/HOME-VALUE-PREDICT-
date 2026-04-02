@@ -8,3 +8,5 @@ openpyxl
 xgboost
 scikit-learn
 statsmodels
+numpy
+shap==0.44.0
